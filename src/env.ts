@@ -17,6 +17,22 @@ function parseCsv(value: string): string[] {
     .filter(Boolean);
 }
 
+const optionalNonEmptyString = z.preprocess((value) => {
+  if (typeof value !== "string")
+    return value;
+
+  const trimmed = value.trim();
+  return trimmed === "" ? undefined : trimmed;
+}, z.string().min(1).optional());
+
+const optionalUrlString = z.preprocess((value) => {
+  if (typeof value !== "string")
+    return value;
+
+  const trimmed = value.trim();
+  return trimmed === "" ? undefined : trimmed;
+}, z.string().url().optional());
+
 function normalizeEnv(rawEnv: NodeJS.ProcessEnv): Record<string, string> {
   const normalized: Record<string, string> = {};
 
@@ -58,10 +74,33 @@ const envSchema = z.object({
   ENABLE_SWAGGER: z.stringbool().default(true),
   ENABLE_REQUEST_LOGGING: z.stringbool().default(true),
 
-  MONGO_URI: z.string().url().optional(),
-  JWT_SECRET: z.string().min(1).optional(),
-  JWT_REFRESH_SECRET: z.string().min(1).optional(),
-  CLIENT_URL: z.string().url().optional(),
+  MONGO_URI: optionalUrlString,
+  MONGO_DB_NAME: optionalNonEmptyString,
+  JWT_SECRET: optionalNonEmptyString,
+  JWT_REFRESH_SECRET: optionalNonEmptyString,
+  COOKIE_SECRET: optionalNonEmptyString,
+  PASSWORD_PEPPER: optionalNonEmptyString,
+  CLIENT_URL: optionalUrlString,
+
+  AWS_REGION: optionalNonEmptyString,
+  AWS_ACCESS_KEY_ID: optionalNonEmptyString,
+  AWS_SECRET_ACCESS_KEY: optionalNonEmptyString,
+  AWS_S3_BUCKET: optionalNonEmptyString,
+  AWS_S3_UPLOAD_PREFIX: optionalNonEmptyString,
+  AWS_KMS_KEY_ID: optionalNonEmptyString,
+
+  EMAIL_PROVIDER: z.enum(["stub", "ses", "postmark", "resend", "sendgrid"]).default("stub"),
+  EMAIL_FROM: optionalNonEmptyString,
+  EMAIL_REPLY_TO: optionalNonEmptyString,
+  AWS_SES_REGION: optionalNonEmptyString,
+
+  REDIS_URL: optionalUrlString,
+  SQS_QUEUE_URL: optionalNonEmptyString,
+
+  STRIPE_SECRET_KEY: optionalNonEmptyString,
+  STRIPE_WEBHOOK_SECRET: optionalNonEmptyString,
+  PLAUSIBLE_API_KEY: optionalNonEmptyString,
+  SENTRY_DSN: optionalNonEmptyString,
 }).superRefine((value, ctx) => {
   if (value.NODE_ENV !== "production")
     return;
@@ -70,6 +109,7 @@ const envSchema = z.object({
     { key: "MONGO_URI", value: value.MONGO_URI },
     { key: "JWT_SECRET", value: value.JWT_SECRET },
     { key: "JWT_REFRESH_SECRET", value: value.JWT_REFRESH_SECRET },
+    { key: "CLIENT_URL", value: value.CLIENT_URL },
   ] as const;
 
   requiredInProduction.forEach(({ key, value: configValue }) => {
